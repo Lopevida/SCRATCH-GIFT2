@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>给宝贝的小惊喜</title>
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/mashanzheng/v5/NaPecZTRCLxvwo41b4gvzkNsoVc.woff2">
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Ma Shan Zheng',cursive;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
+    .container{background:rgba(255,255,255,.95);border-radius:20px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,.1);max-width:400px;width:100%;}
+    .title{text-align:center;font-size:28px;color:#333;margin-bottom:20px;font-weight:normal;}
+    .scratch-card{position:relative;width:100%;height:200px;background:linear-gradient(45deg,#ffd700,#ffed4b);border-radius:15px;overflow:hidden;margin-bottom:20px;box-shadow:0 10px 20px rgba(0,0,0,.1);}
+    .prize-layer{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#fff;z-index:1;}
+    .prize-icon{font-size:48px;margin-bottom:10px;}
+    .prize-text{font-size:24px;color:#333;text-align:center;}
+    .scratch-canvas{position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;z-index:2;}
+    .result{text-align:center;font-size:20px;color:#333;margin-top:20px;min-height:30px;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">🎉 给炎炎的惊喜 🎉</h1>
+    <div class="scratch-card">
+      <div class="prize-layer">
+        <div class="prize-icon" id="prizeIcon">💍</div>
+        <div class="prize-text" id="prizeText">一生一世钻戒</div>
+      </div>
+      <canvas class="scratch-canvas" id="scratchCanvas"></canvas>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    /* ========== 预设奖品（只改这里） ========== */
+    const PRESET_ICON = '😏';
+    const PRESET_TEXT = '和于浩洋共进晚餐的机会';
+
+    /* ========== ScratchCard ========== */
+    class ScratchCard {
+      constructor() {
+        this.canvas = document.getElementById('scratchCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.isScratching = false;
+        this.fired = false;
+        this.threshold = 50;
+        this.radius = 30;
+        this.total = 0;
+        this.init();
+      }
+      async init() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.total = this.canvas.width * this.canvas.height;
+        // ① 等字体 ② 画刮层 ③ 再检测
+        await document.fonts.ready;
+        this.drawScratchLayer();
+        this.bindEvents();
+        this.watch();
+      }
+      drawScratchLayer() {
+        const g = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        g.addColorStop(0, '#ffd700');
+        g.addColorStop(0.5, '#ffed4b');
+        g.addColorStop(1, '#ffd700');
+        this.ctx.fillStyle = g;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#333';
+        this.ctx.font = 'bold 24px "Ma Shan Zheng"';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('刮开有惊喜', this.canvas.width / 2, this.canvas.height / 2);
+      }
+      bindEvents() {
+        const down = (e) => { this.isScratching = true; this.scratch(e); };
+        const up = () => { this.isScratching = false; };
+        const move = (e) => { if (this.isScratching) this.scratch(e); };
+        this.canvas.addEventListener('mousedown', down);
+        this.canvas.addEventListener('mousemove', move);
+        this.canvas.addEventListener('mouseup', up);
+        this.canvas.addEventListener('mouseleave', up);
+        this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); down(e.touches[0]); });
+        this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e.touches[0]); });
+        this.canvas.addEventListener('touchend', up);
+      }
+      scratch(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        this.ctx.globalCompositeOperation = 'destination-out';
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, this.radius, 0, 2 * Math.PI);
+        this.ctx.fill();
+      }
+      watch() {
+        const loop = () => {
+          const img = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+          let transparent = 0;
+          for (let i = 3; i < img.length; i += 4) if (img[i] === 0) transparent++;
+          const percent = (transparent / this.total) * 100;
+          if (percent >= this.threshold && !this.fired) {
+            this.fired = true;
+            this.showResult();
+            this.fireworks();
+          }
+          requestAnimationFrame(loop);
+        };
+        loop();
+      }
+      showResult() {
+        const txt = document.getElementById('prizeText').textContent;
+        const res = document.getElementById('result');
+        res.innerHTML = txt === '谢谢参与'
+          ? `<span style="color:#999;">${txt}，再试试~</span>`
+          : `<span style="color:#48bb78;">🎉 恭喜获得：${txt}！</span>`;
+      }
+      fireworks() {
+        const end = Date.now() + 3 * 1000;
+        const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#ff924c'];
+        (function frame() {
+          confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors });
+          confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+      }
+    }
+
+    /* ========== 字体到位再写入奖品 & 启动 ========== */
+    document.fonts.ready.then(() => {
+      document.getElementById('prizeIcon').textContent = PRESET_ICON;
+      document.getElementById('prizeText').textContent = PRESET_TEXT;
+      new ScratchCard();
+    });
+  </script>
+</body>
+</html>
