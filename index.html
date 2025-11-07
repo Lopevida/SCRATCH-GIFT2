@@ -3,42 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>给宝贝的小惊喜</title>
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/mashanzheng/v5/NaPecZTRCLxvwo41b4gvzkNsoVc.woff2">
+  <title>Happy Birthday</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=block" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=block" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Ma Shan Zheng',cursive;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
     .container{background:rgba(255,255,255,.95);border-radius:20px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,.1);max-width:400px;width:100%;}
-    .title{text-align:center;font-size:28px;color:#333;margin-bottom:20px;font-weight:normal;}
+    .title{text-align:center;font-size:42px;color:#d63384;font-family:'Dancing Script',cursive;margin-bottom:10px;font-weight:700;}
     .scratch-card{position:relative;width:100%;height:200px;background:linear-gradient(45deg,#ffd700,#ffed4b);border-radius:15px;overflow:hidden;margin-bottom:20px;box-shadow:0 10px 20px rgba(0,0,0,.1);}
     .prize-layer{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#fff;z-index:1;}
     .prize-icon{font-size:48px;margin-bottom:10px;}
     .prize-text{font-size:24px;color:#333;text-align:center;}
     .scratch-canvas{position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;z-index:2;}
     .result{text-align:center;font-size:20px;color:#333;margin-top:20px;min-height:30px;}
+    .btn-row{display:flex;gap:12px;justify-content:center;margin-top:15px;}
+    .again-btn{display:inline-block;padding:10px 24px;background:#48bb78;color:#fff;border:none;border-radius:10px;font-size:18px;cursor:pointer;font-family:inherit;}
+    .again-btn:hover{background:#38a169;}
+    .again-btn:disabled{background:#ccc;cursor:not-allowed;}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 class="title">🎉 给炎炎的惊喜 🎉</h1>
+    <h1 class="title">Happy Birthday</h1>
     <div class="scratch-card">
       <div class="prize-layer">
-        <div class="prize-icon" id="prizeIcon">💍</div>
-        <div class="prize-text" id="prizeText">一生一世钻戒</div>
+        <div class="prize-icon" id="prizeIcon">🎁</div>
+        <div class="prize-text" id="prizeText">谢谢参与</div>
       </div>
       <canvas class="scratch-canvas" id="scratchCanvas"></canvas>
     </div>
     <div class="result" id="result"></div>
+    <div class="btn-row">
+      <button class="again-btn" id="againBtn" onclick="resetScratch()">再来一次</button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>
-    /* ========== 预设奖品（只改这里） ========== */
-    const PRESET_ICON = '😏';
-    const PRESET_TEXT = '和于浩洋共进晚餐的机会';
+    /* ================= 第一次：谢谢参与符号（① 自定义） ================= */
+    const FIRST_ICON = '😭';        // 第一次符号
+    const FIRST_TEXT = '谢谢参与'; // 第一次文字
 
-    /* ========== ScratchCard ========== */
+    /* ================= 第二次奖品（② 自定义） ================= */
+    const SECOND_ICON = '🍰';
+    const SECOND_TEXT = '生日蛋糕券';
+
+    /* ================= 第三次奖品（③ 自定义） ================= */
+    const THIRD_ICON = '🎧';
+    const THIRD_TEXT = '限量耳机';
+
+    let playCount = 0; // 0=第一次，1=第二次，2=第三次
+
+    let currentCard = null; // 保存当前实例
+
+    /* ================= ScratchCard ================= */
     class ScratchCard {
       constructor() {
         this.canvas = document.getElementById('scratchCanvas');
@@ -55,7 +74,6 @@
         this.canvas.width = rect.width;
         this.canvas.height = rect.height;
         this.total = this.canvas.width * this.canvas.height;
-        // ① 等字体 ② 画刮层 ③ 再检测
         await document.fonts.ready;
         this.drawScratchLayer();
         this.bindEvents();
@@ -105,6 +123,8 @@
             this.fired = true;
             this.showResult();
             this.fireworks();
+            // 显示按钮，不自动下一轮
+            document.getElementById('againBtn').disabled = false;
           }
           requestAnimationFrame(loop);
         };
@@ -128,11 +148,39 @@
       }
     }
 
-    /* ========== 字体到位再写入奖品 & 启动 ========== */
+    /* ================= 启动 & 重置 ================= */
+    function startNewRound() {
+      // 根据次数换奖品
+      if (playCount === 0) {
+        document.getElementById('prizeIcon').textContent = FIRST_ICON;
+        document.getElementById('prizeText').textContent = FIRST_TEXT;
+      } else if (playCount === 1) {
+        document.getElementById('prizeIcon').textContent = SECOND_ICON;
+        document.getElementById('prizeText').textContent = SECOND_TEXT;
+      } else {
+        document.getElementById('prizeIcon').textContent = THIRD_ICON;
+        document.getElementById('prizeText').textContent = THIRD_TEXT;
+      }
+      document.getElementById('result').innerHTML = '';
+      document.getElementById('againBtn').disabled = true; // 先禁用
+      currentCard = new ScratchCard();
+    }
+
+    function resetScratch() {
+      playCount++;
+      if (playCount > 2) playCount = 2; // 第四次及以后循环用第三次
+      // 重置画布
+      const canvas = document.getElementById('scratchCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 重新启动
+      startNewRound();
+    }
+
+    /* 第一次加载 */
     document.fonts.ready.then(() => {
-      document.getElementById('prizeIcon').textContent = PRESET_ICON;
-      document.getElementById('prizeText').textContent = PRESET_TEXT;
-      new ScratchCard();
+      startNewRound();
     });
   </script>
 </body>
